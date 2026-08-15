@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ============================================================
-# DRC AUTOMATED SHORT-FORM VIDEO PLATFORM
+# DRC AUTOMATED SHORT-FORM VIDEO PLATFORM v4.1 - FIXED
 # anonymous KA BOT - ZERO LIMITS
 # 9:16 Vertical | 10 Seconds Strict | 24 FPS | Ultrafast
 # Stage 1: Groq Script | Stage 2: OpenRouter JSON
 # Stage 3: TTS Voiceover | Stage 4: MoviePy Composite
 # VPS Optimized: 2 vCPU | 1GB RAM
+# FIXES: ImageSequenceClip duration, set_opacity, font fallback
 # ============================================================
 
 import os, sys, json, time, math, random, textwrap, traceback, logging
@@ -55,191 +56,221 @@ logging.basicConfig(
 logger = logging.getLogger("DRC_VIDEO")
 
 # Video specs
-W, H = 1080, 1920      # 9:16 vertical
-FPS = 24               # strict 24 FPS
-TOTAL_DURATION = 10.0  # strict 10 seconds
-PRESET = "ultrafast"   # VPS optimized
-THREADS = 2            # match 2 vCPU
+W, H = 1080, 1920
+FPS = 24
+TOTAL_DURATION = 10.0
+PRESET = "ultrafast"
+THREADS = 2
 
-# Color palette
+# Colors
 COLORS = {
-    "blood_red": (180, 20, 20),
-    "neon_cyan": (0, 255, 255),
-    "electric_purple": (138, 43, 226),
-    "gold": (255, 215, 0),
     "white": (255, 255, 255),
-    "black": (0, 0, 0),
-    "dark_gray": (20, 20, 20),
-    "fire_orange": (255, 100, 0),
-}
-
-BG_THEMES = {
-    "dark_gradient": [(10, 10, 15), (30, 30, 40), (15, 15, 25)],
-    "red_storm": [(20, 0, 0), (60, 0, 0), (30, 0, 0)],
-    "purple_haze": [(15, 0, 20), (40, 0, 50), (25, 0, 35)],
-    "blue_depth": [(0, 10, 20), (0, 30, 50), (0, 15, 30)],
+    "yellow": (255, 220, 50),
+    "cyan": (50, 220, 255),
+    "red": (255, 60, 60),
+    "green": (60, 255, 120),
+    "purple": (180, 80, 255),
+    "orange": (255, 140, 40),
 }
 
 # ============================================================
-# STAGE 1: GROQ - Generate Punchy Personal Struggle Script
+# STAGE 1: GROQ SCRIPT
 # ============================================================
 def stage1_groq_script():
     logger.info("[STAGE 1] Groq script generation...")
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": "Bearer " + GROQ_API_KEY, "Content-Type": "application/json"}
+    topics = [
+        "AI revolution", "future of work", "mind hacking", "digital nomad life",
+        "startup grind", "crypto mindset", "productivity hacks", "sleep optimization",
+        "focus mastery", "wealth psychology", "fitment motivation", "coding life"
+    ]
+    topic = random.choice(topics)
+    prompt = (
+        "Generate a viral 10-second short-form video script. Topic: " + topic +
+        ". STRICT RULES:
+"
+        "- EXACTLY 4 segments
+"
+        "- Each segment: 1 powerful hook line (max 8 words)
+"
+        "- Total script must fit in 10 seconds when spoken fast
+"
+        "- Use punchy, viral language
+"
+        "- Format: numbered list, one line per segment
+"
+        "- NO emojis, NO hashtags, NO stage directions
+"
+        "- Just the raw text lines"
+    )
+    payload = {
+        "model": "llama3-8b-8192",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.9,
+        "max_tokens": 200
+    }
     try:
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {"Authorization": "Bearer " + GROQ_API_KEY, "Content-Type": "application/json"}
-        prompt = """Write a highly engaging, punchy 10-second personal struggle/motivation script for a vertical short video.
-Rules:
-- Total spoken words: 15-20 words max (fits 10 seconds)
-- 4 distinct punchy segments
-- Each segment: 3-5 words, highly emotional
-- Theme: overcoming struggle, pain to power
-- Style: raw, aggressive, inspiring
-- NO emojis, NO hashtags
-
-Return ONLY the 4 lines, one per line. No extra text."""
-        payload = {
-            "model": "llama-3.3-70b-versatile",
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 256,
-            "temperature": 0.9
-        }
-        r = requests.post(url, json=payload, headers=headers, timeout=30)
+        r = requests.post(url, headers=headers, json=payload, timeout=15)
         r.raise_for_status()
-        text = r.json()["choices"][0]["message"]["content"].strip()
-        lines = [l.strip("-\"'• ") for l in text.split("\n") if l.strip() and len(l.strip()) > 2]
-        lines = lines[:4]
+        content = r.json()["choices"][0]["message"]["content"]
+        lines = [l.strip().lstrip("0123456789.-) ") for l in content.split("
+") if l.strip()]
+        lines = [l for l in lines if len(l) > 3][:4]
         if len(lines) < 4:
-            lines += ["I BROKE", "I BLED", "I ROSE", "I WON"][:4-len(lines)]
+            lines += ["Think different.", "Move fast.", "Break things.", "Build the future."][:4-len(lines)]
         logger.info("[STAGE 1] Script: " + " | ".join(lines))
         return lines
     except Exception as e:
-        logger.error("[STAGE 1 ERROR] " + str(e))
-        return ["I BROKE", "I BLED", "I ROSE", "I WON"]
+        logger.error("[STAGE 1] Failed: " + str(e))
+        return ["AI is changing everything.", "Are you ready?", "The future is now.", "Act fast."]
 
 # ============================================================
-# STAGE 2: OpenRouter - Structure into JSON Schema
+# STAGE 2: OPENROUTER JSON
 # ============================================================
 def stage2_openrouter_json(lines):
-    logger.info("[STAGE 2] OpenRouter JSON structuring...")
+    logger.info("[STAGE 2] OpenRouter JSON scene data...")
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {"Authorization": "Bearer " + OPENROUTER_API_KEY, "Content-Type": "application/json"}
+    prompt = (
+        "Convert these 4 text lines into a JSON video scene array. Each scene needs:
+"
+        "- text: the line (string)
+"
+        "- start_time: when it appears (0, 2.5, 5.0, 7.5)
+"
+        "- duration: how long it stays (2.5)
+"
+        "- color: text color (white, yellow, cyan, red, green, purple, orange)
+"
+        "- font: style (bold, heavy, impact)
+"
+        "- bg_theme: background (dark_gradient, neon_pulse, cyber_grid, warm_glow)
+"
+        "- animation: entrance (slide_up, slide_down, zoom_in, fade_in, glitch_reveal, slide_left, slide_right)
+
+"
+        "Lines:
+" + "
+".join([str(i+1) + ". " + l for i, l in enumerate(lines)]) +
+        "
+
+Return ONLY valid JSON with this exact structure:
+"
+        '{"segments": [{"text":"...","start_time":0,"duration":2.5,"color":"white","font":"bold","bg_theme":"dark_gradient","animation":"slide_up"}, ...]}'
+    )
+    payload = {
+        "model": "google/gemini-2.0-flash-lite-001",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 500
+    }
     try:
-        url = "https://openrouter.ai/api/v1/chat/completions"
-        headers = {
-            "Authorization": "Bearer " + OPENROUTER_API_KEY,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://anonymous.bot",
-            "X-Title": "DRC Video Platform"
-        }
-        script_text = " | ".join(lines)
-        prompt = """Convert this 4-segment script into a strict JSON schema for video generation.
-Each segment gets exactly 2.5 seconds. Total 10 seconds.
-
-Available animations: slide_up, slide_down, slide_left, slide_right, zoom_in, fade_in, glitch_reveal
-Available fonts: bold, heavy, impact
-Available colors: blood_red, neon_cyan, electric_purple, gold, white, fire_orange
-Available bg_themes: dark_gradient, red_storm, purple_haze, blue_depth
-
-Return ONLY valid JSON. No markdown, no explanations.
-
-Schema:
-{
-  "title": "video title",
-  "segments": [
-    {"text": "line1", "start_time": 0.0, "duration": 2.5, "color": "white", "font": "bold", "animation": "slide_up", "bg_theme": "dark_gradient"},
-    {"text": "line2", "start_time": 2.5, "duration": 2.5, "color": "blood_red", "font": "heavy", "animation": "zoom_in", "bg_theme": "red_storm"},
-    {"text": "line3", "start_time": 5.0, "duration": 2.5, "color": "neon_cyan", "font": "bold", "animation": "slide_right", "bg_theme": "purple_haze"},
-    {"text": "line4", "start_time": 7.5, "duration": 2.5, "color": "gold", "font": "impact", "animation": "fade_in", "bg_theme": "blue_depth"}
-  ]
-}
-
-Script: """ + script_text
-        payload = {
-            "model": "openai/gpt-4o-mini",
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 512
-        }
-        r = requests.post(url, json=payload, headers=headers, timeout=30)
+        r = requests.post(url, headers=headers, json=payload, timeout=20)
         r.raise_for_status()
-        text = r.json()["choices"][0]["message"]["content"]
+        content = r.json()["choices"][0]["message"]["content"]
         # Extract JSON
-        start = text.find("{")
-        end = text.rfind("}") + 1
-        data = json.loads(text[start:end])
-        # Validate and fix timing
-        for i, seg in enumerate(data.get("segments", [])):
-            seg["start_time"] = round(i * 2.5, 1)
-            seg["duration"] = 2.5
-        logger.info("[STAGE 2] JSON structured with " + str(len(data.get("segments", []))) + " segments")
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0]
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0]
+        data = json.loads(content.strip())
+        if "segments" not in data or len(data["segments"]) < 4:
+            raise ValueError("Invalid segment count")
+        logger.info("[STAGE 2] JSON parsed: " + str(len(data["segments"])) + " segments")
         return data
     except Exception as e:
-        logger.error("[STAGE 2 ERROR] " + str(e))
+        logger.error("[STAGE 2] Failed: " + str(e))
         # Fallback JSON
         return {
-            "title": "BREAK THEN BUILD",
             "segments": [
-                {"text": lines[0], "start_time": 0.0, "duration": 2.5, "color": "white", "font": "bold", "animation": "slide_up", "bg_theme": "dark_gradient"},
-                {"text": lines[1], "start_time": 2.5, "duration": 2.5, "color": "blood_red", "font": "heavy", "animation": "zoom_in", "bg_theme": "red_storm"},
-                {"text": lines[2], "start_time": 5.0, "duration": 2.5, "color": "neon_cyan", "font": "bold", "animation": "slide_right", "bg_theme": "purple_haze"},
-                {"text": lines[3], "start_time": 7.5, "duration": 2.5, "color": "gold", "font": "impact", "animation": "fade_in", "bg_theme": "blue_depth"},
+                {"text": lines[0], "start_time": 0, "duration": 2.5, "color": "white", "font": "bold", "bg_theme": "dark_gradient", "animation": "slide_up"},
+                {"text": lines[1], "start_time": 2.5, "duration": 2.5, "color": "yellow", "font": "heavy", "bg_theme": "neon_pulse", "animation": "slide_down"},
+                {"text": lines[2], "start_time": 5.0, "duration": 2.5, "color": "cyan", "font": "impact", "bg_theme": "cyber_grid", "animation": "zoom_in"},
+                {"text": lines[3], "start_time": 7.5, "duration": 2.5, "color": "red", "font": "bold", "bg_theme": "warm_glow", "animation": "glitch_reveal"},
             ]
         }
 
 # ============================================================
-# STAGE 3: Voiceover - Google TTS (gTTS)
-# Note: Gemini API does not provide TTS. gTTS uses Google's
-# free TTS endpoint and produces high-quality MP3 voiceover.
+# STAGE 3: TTS VOICEOVER
 # ============================================================
-def stage3_voiceover(segments, output_mp3):
-    logger.info("[STAGE 3] Generating voiceover MP3...")
+def stage3_voiceover(segments, output_path):
     if not GTTS_OK:
         logger.warning("[STAGE 3] gTTS not available, skipping voiceover")
         return None
+    logger.info("[STAGE 3] Generating voiceover...")
     try:
-        full_text = ". ".join([s["text"] for s in segments])
-        tts = gTTS(text=full_text, lang="en", tld="us", slow=False)
-        tts.save(str(output_mp3))
-        logger.info("[STAGE 3] Voiceover saved: " + str(output_mp3))
-        return str(output_mp3)
+        text = " ".join([seg.get("text", "") for seg in segments])
+        tts = gTTS(text=text, lang="en", tld="us", slow=False)
+        tts.save(str(output_path))
+        logger.info("[STAGE 3] Voiceover saved: " + str(output_path))
+        return str(output_path)
     except Exception as e:
-        logger.error("[STAGE 3 ERROR] " + str(e))
+        logger.error("[STAGE 3] TTS failed: " + str(e))
         return None
 
 # ============================================================
-# STAGE 4: MoviePy Composite - VPS Optimized
+# HELPERS
 # ============================================================
 def get_font(size, font_name="bold"):
     """Load system font, fallback to default."""
     font_map = {
-        "bold": ["DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf", "FreeSansBold.ttf"],
-        "heavy": ["DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf"],
-        "impact": ["LiberationSans-Bold.ttf", "DejaVuSans-Bold.ttf"],
+        "bold": ["DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf", "FreeSansBold.ttf", "NotoSans-Bold.ttf"],
+        "heavy": ["DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf", "NotoSans-Bold.ttf"],
+        "impact": ["LiberationSans-Bold.ttf", "DejaVuSans-Bold.ttf", "NotoSans-Bold.ttf"],
     }
     base_paths = [
         "/usr/share/fonts/truetype/dejavu/",
         "/usr/share/fonts/truetype/liberation/",
         "/usr/share/fonts/truetype/freefont/",
+        "/usr/share/fonts/truetype/noto/",
     ]
     for fn in font_map.get(font_name, font_map["bold"]):
         for bp in base_paths:
             fp = bp + fn
             if os.path.exists(fp):
                 return ImageFont.truetype(fp, size)
+    # Try to find ANY bold font
+    import subprocess
+    try:
+        result = subprocess.run(["fc-list", ":style=Bold", "file"], capture_output=True, text=True)
+        fonts = [l.split(":")[0].strip() for l in result.stdout.strip().split("
+") if l.strip()]
+        if fonts:
+            return ImageFont.truetype(fonts[0], size)
+    except:
+        pass
     return ImageFont.load_default()
 
 def create_gradient_bg(width, height, theme_name, frame_idx=0):
-    """Create animated gradient background."""
-    colors = BG_THEMES.get(theme_name, BG_THEMES["dark_gradient"])
-    img = Image.new("RGB", (width, height), (0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    n = len(colors)
-    phase = (frame_idx * 0.02) % n
+    """Generate animated gradient background frame."""
+    img = Image.new("RGB", (width, height))
+    pixels = img.load()
+
+    # Color palettes
+    palettes = {
+        "dark_gradient": [(10, 10, 30), (30, 10, 50), (10, 30, 50)],
+        "neon_pulse": [(5, 5, 20), (20, 5, 40), (5, 20, 40)],
+        "cyber_grid": [(0, 10, 20), (10, 0, 30), (0, 20, 30)],
+        "warm_glow": [(30, 10, 5), (50, 20, 10), (40, 30, 5)],
+    }
+    colors = palettes.get(theme_name, palettes["dark_gradient"])
+
+    # Animate offset
+    offset = (frame_idx * 3) % height
+
     for y in range(height):
-        t = y / height
-        idx = int(phase + t * n) % n
-        nxt = (idx + 1) % n
-        lt = (phase + t * n) % 1.0
-        c = tuple(int(a + (b - a) * lt) for a, b in zip(colors[idx], colors[nxt]))
-        draw.line([(0, y), (width, y)], fill=c)
+        for x in range(width):
+            # Diagonal gradient with animation
+            t = ((x + y + offset) % height) / height
+            idx = int(t * (len(colors) - 1))
+            frac = t * (len(colors) - 1) - idx
+            if idx >= len(colors) - 1:
+                c = colors[-1]
+            else:
+                c1, c2 = colors[idx], colors[idx + 1]
+                c = tuple(int(c1[i] + (c2[i] - c1[i]) * frac) for i in range(3))
+            pixels[x, y] = c
     return img
 
 def draw_text_frame(text, color_name, font_name, size=140, glow=True):
@@ -256,10 +287,14 @@ def draw_text_frame(text, color_name, font_name, size=140, glow=True):
     if len(text) > 12:
         text = textwrap.fill(text, width=10)
 
-    # Measure
-    bbox = draw.textbbox((0, 0), text, font=font)
-    tw = bbox[2] - bbox[0]
-    th = bbox[3] - bbox[1]
+    # Measure - handle both old and new PIL
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        tw = bbox[2] - bbox[0]
+        th = bbox[3] - bbox[1]
+    except AttributeError:
+        tw, th = draw.textsize(text, font=font)
+
     x = (W - tw) // 2
     y = (H - th) // 2
 
@@ -283,62 +318,51 @@ def draw_text_frame(text, color_name, font_name, size=140, glow=True):
     return img
 
 def animation_position(animation, duration, t, clip_w, clip_h):
-    """Return (x, y) position for animation at time t."""
+    """Calculate position for slide animations."""
     progress = t / duration if duration > 0 else 1.0
-    cx = W // 2 - clip_w // 2
-    cy = H // 2 - clip_h // 2
-
+    cx, cy = W // 2, H // 2
     if animation == "slide_up":
-        start_y = H + 100
-        end_y = cy
-        y = start_y + (end_y - start_y) * min(1.0, progress * 1.5)
-        return (cx, int(y))
+        y = H + 100 - (H + 100 - cy + 65) * min(1.0, progress * 1.4)
+        return ("center", int(y))
     elif animation == "slide_down":
-        start_y = -clip_h - 100
-        end_y = cy
-        y = start_y + (end_y - start_y) * min(1.0, progress * 1.5)
-        return (cx, int(y))
+        y = -200 + (cy + 200) * min(1.0, progress * 1.4)
+        return ("center", int(y))
     elif animation == "slide_left":
-        start_x = W + 100
-        end_x = cx
-        x = start_x + (end_x - start_x) * min(1.0, progress * 1.5)
-        return (int(x), cy)
+        x = W + 100 - (W + 100 - cx + 200) * min(1.0, progress * 1.4)
+        return (int(x), "center")
     elif animation == "slide_right":
-        start_x = -clip_w - 100
-        end_x = cx
-        x = start_x + (end_x - start_x) * min(1.0, progress * 1.5)
-        return (int(x), cy)
-    elif animation == "zoom_in":
-        return (cx, cy)  # scaling handled separately
-    elif animation == "fade_in":
-        return (cx, cy)
-    elif animation == "glitch_reveal":
-        return (cx, cy)
-    else:
-        return (cx, cy)
+        x = -200 + (cx + 200) * min(1.0, progress * 1.4)
+        return (int(x), "center")
+    return ("center", "center")
 
+# ============================================================
+# STAGE 4: MOVIEPY COMPOSITE - FIXED VERSION
+# ============================================================
 def stage4_moviepy_composite(data, voiceover_path, output_video):
     logger.info("[STAGE 4] MoviePy composite starting...")
     start = time.time()
     segments = data.get("segments", [])
 
-    # Background clips - one per segment for gradient animation
+    if not segments:
+        logger.error("[STAGE 4] No segments provided")
+        return None
+
+    # Background clips - FIXED: use ImageClip with proper duration instead of ImageSequenceClip
     bg_clips = []
     for seg in segments:
         theme = seg.get("bg_theme", "dark_gradient")
         start_t = seg.get("start_time", 0)
         dur = seg.get("duration", 2.5)
 
-        # Generate background frames
-        frames = []
-        for fi in range(int(dur * 3)):
-            bg_img = create_gradient_bg(W, H, theme, fi + int(start_t * 10))
-            frames.append(np.array(bg_img))
+        # Generate single background frame (static for this segment)
+        bg_img = create_gradient_bg(W, H, theme, int(start_t * 10))
+        bg_np = np.array(bg_img)
 
-        bg_clip = ImageSequenceClip(frames, fps=3).set_duration(dur).set_start(start_t)
+        # Use ImageClip instead of ImageSequenceClip - more reliable
+        bg_clip = ImageClip(bg_np).set_duration(dur).set_start(start_t)
         bg_clips.append(bg_clip)
 
-    # Text clips
+    # Text clips - FIXED: proper handling of animations
     text_clips = []
     for seg in segments:
         text = seg.get("text", "TEXT")
@@ -355,35 +379,21 @@ def stage4_moviepy_composite(data, voiceover_path, output_video):
         # Create clip
         txt_clip = ImageClip(txt_np).set_duration(dur).set_start(start_t)
 
-        # Apply animation
+        # Apply animation - FIXED: avoid problematic methods
         if anim == "zoom_in":
-            txt_clip = txt_clip.resize(lambda t: 0.6 + 0.4 * min(1.0, t / (dur * 0.6)))
+            # Use a simple scale instead of time-dependent resize
+            txt_clip = txt_clip.resize(0.8)
             txt_clip = txt_clip.set_position("center")
         elif anim == "fade_in":
             txt_clip = txt_clip.set_position("center")
-            txt_clip = txt_clip.set_opacity(0.95)
+            # Use crossfadein instead of set_opacity for fade effect
+            txt_clip = txt_clip.crossfadein(0.3)
         elif anim == "glitch_reveal":
             txt_clip = txt_clip.set_position("center")
-            txt_clip = txt_clip.set_opacity(0.95)
+            # Simple reveal - no opacity issues
         else:
-            # Slide animations
-            def pos_func(t, a=anim, d=dur):
-                progress = t / d if d > 0 else 1.0
-                cx, cy = W // 2, H // 2
-                if a == "slide_up":
-                    y = H + 100 - (H + 100 - cy + 65) * min(1.0, progress * 1.4)
-                    return ("center", int(y))
-                elif a == "slide_down":
-                    y = -200 + (cy + 200) * min(1.0, progress * 1.4)
-                    return ("center", int(y))
-                elif a == "slide_left":
-                    x = W + 100 - (W + 100 - cx + 200) * min(1.0, progress * 1.4)
-                    return (int(x), "center")
-                elif a == "slide_right":
-                    x = -200 + (cx + 200) * min(1.0, progress * 1.4)
-                    return (int(x), "center")
-                return ("center", "center")
-            txt_clip = txt_clip.set_position(lambda t: pos_func(t))
+            # Slide animations - use set_position with lambda
+            txt_clip = txt_clip.set_position(lambda t: animation_position(anim, dur, t, txt_clip.w, txt_clip.h))
 
         text_clips.append(txt_clip)
 
@@ -409,25 +419,29 @@ def stage4_moviepy_composite(data, voiceover_path, output_video):
 
     # Export - VPS optimized
     logger.info("[STAGE 4] Rendering video...")
-    video.write_videofile(
-        output_video,
-        fps=FPS,
-        codec="libx264",
-        preset=PRESET,
-        threads=THREADS,
-        audio_codec="aac" if video.audio else None,
-        logger=None,
-        temp_audiofile=str(TEMP_DIR / "tmp_audio.m4a"),
-        remove_temp=True
-    )
-    video.close()
-
-    elapsed = time.time() - start
-    logger.info("[STAGE 4] Render complete in " + str(round(elapsed, 1)) + "s: " + output_video)
-    return output_video
+    try:
+        video.write_videofile(
+            output_video,
+            fps=FPS,
+            codec="libx264",
+            preset=PRESET,
+            threads=THREADS,
+            audio_codec="aac" if video.audio else None,
+            logger=None,
+            verbose=False,
+            temp_audiofile=str(TEMP_DIR / ("tmp_audio_" + str(int(time.time())) + ".m4a")),
+            remove_temp=True
+        )
+        elapsed = time.time() - start
+        logger.info("[STAGE 4] Render complete: " + output_video + " (" + str(round(elapsed, 1)) + "s)")
+        return output_video
+    except Exception as e:
+        logger.error("[STAGE 4] Render failed: " + str(e))
+        logger.error(traceback.format_exc())
+        return None
 
 # ============================================================
-# MAIN ORCHESTRATOR
+# MAIN PIPELINE
 # ============================================================
 def generate_short(output_path=None, topic=None):
     """Full pipeline: Groq -> OpenRouter -> TTS -> MoviePy"""
@@ -459,8 +473,12 @@ def generate_short(output_path=None, topic=None):
         if voiceover and os.path.exists(voiceover):
             os.remove(voiceover)
 
-        logger.info("✅ SHORT GENERATED: " + final)
-        return final
+        if final and os.path.exists(final):
+            logger.info("SHORT GENERATED: " + final)
+            return final
+        else:
+            logger.error("PIPELINE FAILED: No output file generated")
+            return None
 
     except Exception as e:
         logger.error("PIPELINE FAILED: " + str(e))
@@ -468,21 +486,17 @@ def generate_short(output_path=None, topic=None):
         return None
 
 # ============================================================
-# CLI / DIRECT RUN
+# CLI
 # ============================================================
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="DRC Automated Video Platform")
-    parser.add_argument("--output", "-o", default=None, help="Output video path")
-    parser.add_argument("--topic", "-t", default=None, help="Optional topic hint")
+    parser = argparse.ArgumentParser(description="DRC Video Platform")
+    parser.add_argument("-o", "--output", default=None, help="Output file path")
+    parser.add_argument("-t", "--topic", default=None, help="Video topic")
     args = parser.parse_args()
-
-    result = generate_short(output_path=args.output, topic=args.topic)
+    result = generate_short(args.output, args.topic)
     if result:
-        print("\n🎬 VIDEO READY: " + result)
-        # Print file size
-        sz = os.path.getsize(result) / (1024 * 1024)
-        print("📦 Size: " + str(round(sz, 1)) + " MB")
+        print("SUCCESS: " + result)
     else:
-        print("\n❌ Generation failed. Check logs.")
+        print("FAILED")
         sys.exit(1)
