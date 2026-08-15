@@ -12,7 +12,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 sys.path.insert(0, "/opt/drcbot")
 from video_platform import generate_short, OUTPUT_DIR, LOG_DIR
 
-TG_BOT_TOKEN = "8811380378:AAFZPBXhCtzOYfSQBn1NEFOEeclQynozH6s"
+TG_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
 
 logging.basicConfig(
     level=logging.INFO,
